@@ -4,6 +4,7 @@ import mxnet as mx
 import os
 import importlib
 import sys
+import cv2
 from detect.detector import Detector
 
 CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat',
@@ -13,7 +14,7 @@ CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat',
            'sheep', 'sofa', 'train', 'tvmonitor')
 
 def get_detector(net, prefix, epoch, data_shape, mean_pixels, ctx,
-                 nms_thresh=0.5, force_nms=True):
+                 nms_thresh=0.5, force_nms=True, run_video=False):
     """
     wrapper for initialize a detector
 
@@ -35,11 +36,12 @@ def get_detector(net, prefix, epoch, data_shape, mean_pixels, ctx,
         force suppress different categories
     """
     sys.path.append(os.path.join(os.getcwd(), 'symbol'))
+    print(net)
     if net is not None:
         net = importlib.import_module("symbol_" + net) \
             .get_symbol(len(CLASSES), nms_thresh, force_nms)
     detector = Detector(net, prefix + "_" + str(data_shape), epoch, \
-        data_shape, mean_pixels, ctx=ctx)
+        data_shape, mean_pixels, ctx=ctx, run_video=run_video)
     return detector
 
 def parse_args():
@@ -78,10 +80,13 @@ def parse_args():
                         help='show detection time')
     parser.add_argument('--deploy', dest='deploy_net', action='store_true', default=False,
                         help='Load network from json file, rather than from symbol')
+    parser.add_argument('--realtime', dest='run_video', type=bool, default=False,
+                        help='show detection for realtime video')
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
+
+def run_detect():
     args = parse_args()
     if args.cpu:
         ctx = mx.cpu()
@@ -96,7 +101,28 @@ if __name__ == '__main__':
     detector = get_detector(network, args.prefix, args.epoch,
                             args.data_shape,
                             (args.mean_r, args.mean_g, args.mean_b),
-                            ctx, args.nms_thresh, args.force_nms)
+                            ctx, args.nms_thresh, args.force_nms, args.run_video)
     # run detection
     detector.detect_and_visualize(image_list, args.dir, args.extension,
                                   CLASSES, args.thresh, args.show_timer)
+
+
+def main():
+    img_file = 'D:\mxnet-ssd\data\VOCdevkit\VOC2007.train\JPEGImages\\000021.jpg'
+    #img = cv2.imread(img_file)
+    #print(type(img))
+    #print(img)
+
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        print(ret)
+        print(type(frame))
+        cv2.imshow('Cam', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    return
+
+if __name__ == '__main__':
+    #main()
+    run_detect()

@@ -27,11 +27,18 @@ class Detector(object):
         device to use, if None, use mx.cpu() as default context
     """
     def __init__(self, symbol, model_prefix, epoch, data_shape, mean_pixels, \
-                 batch_size=1, ctx=None):
+                 batch_size=1, ctx=None, run_video=False):
         self.ctx = ctx
         if self.ctx is None:
             self.ctx = mx.cpu()
+        self._run_video = run_video
         load_symbol, args, auxs = mx.model.load_checkpoint(model_prefix, epoch)
+        #print('load_symbol: ')
+        #print(load_symbol)
+        #print('symbol: ')
+        #print(symbol)
+        #print(args)
+        #print('auxs: ' + str(auxs))
         if symbol is None:
             symbol = load_symbol
         self.mod = mx.mod.Module(symbol, label_names=None, context=ctx)
@@ -57,6 +64,7 @@ class Detector(object):
         list of detection results
         """
         num_images = det_iter._size
+        print(type(det_iter))
         if not isinstance(det_iter, mx.io.PrefetchingIter):
             det_iter = mx.io.PrefetchingIter(det_iter)
         start = timer()
@@ -94,6 +102,11 @@ class Detector(object):
         test_db = TestDB(im_list, root_dir=root_dir, extension=extension)
         test_iter = DetIter(test_db, 1, self.data_shape, self.mean_pixels,
                             is_train=False)
+        return self.detect(test_iter, show_timer)
+
+    def vd_detect(self, frame, show_timer=False):
+        test_iter = DetIter(None, 1, self.data_shape, frame=frame,
+                            mean_pixels=self.mean_pixels, is_train=False)
         return self.detect(test_iter, show_timer)
 
     def visualize_detection(self, img, dets, classes=[], thresh=0.6):
@@ -163,11 +176,24 @@ class Detector(object):
 
         """
         import cv2
-        dets = self.im_detect(im_list, root_dir, extension, show_timer=show_timer)
-        if not isinstance(im_list, list):
-            im_list = [im_list]
-        assert len(dets) == len(im_list)
-        for k, det in enumerate(dets):
-            img = cv2.imread(im_list[k])
-            img[:, :, (0, 1, 2)] = img[:, :, (2, 1, 0)]
-            self.visualize_detection(img, det, classes, thresh)
+        if self._run_video:
+            cap = cv2.VideoCapture(0)
+            while True:
+                ret, frame = cap.read()
+                print(ret)
+                print(type(frame))
+                dets = self.vd_detect(frame=frame, show_timer=show_timer)
+                for det in dets:
+                    cv2.imshow('Cam', det)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+        else:
+            dets = self.im_detect(im_list, root_dir, extension, show_timer=show_timer)
+            if not isinstance(im_list, list):
+                im_list = [im_list]
+            assert len(dets) == len(im_list)
+            for k, det in enumerate(dets):
+                print(type(det))
+                img = cv2.imread(im_list[k])
+                img[:, :, (0, 1, 2)] = img[:, :, (2, 1, 0)]
+                self.visualize_detection(img, det, classes, thresh)
