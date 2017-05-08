@@ -13,6 +13,7 @@ CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat',
            'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor')
 
+
 def get_detector(net, prefix, epoch, data_shape, mean_pixels, ctx,
                  nms_thresh=0.5, force_nms=True, run_video=False):
     """
@@ -36,13 +37,13 @@ def get_detector(net, prefix, epoch, data_shape, mean_pixels, ctx,
         force suppress different categories
     """
     sys.path.append(os.path.join(os.getcwd(), 'symbol'))
-    print(net)
     if net is not None:
         net = importlib.import_module("symbol_" + net) \
             .get_symbol(len(CLASSES), nms_thresh, force_nms)
     detector = Detector(net, prefix + "_" + str(data_shape), epoch, \
         data_shape, mean_pixels, ctx=ctx, run_video=run_video)
     return detector
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Single-shot detection network demo')
@@ -55,7 +56,7 @@ def parse_args():
     parser.add_argument('--ext', dest='extension', help='image extension, optional',
                         type=str, nargs='?')
     parser.add_argument('--epoch', dest='epoch', help='epoch of trained model',
-                        default=0, type=int)
+                        default=240, type=int)
     parser.add_argument('--prefix', dest='prefix', help='trained model prefix',
                         default=os.path.join(os.getcwd(), 'model', 'ssd'), type=str)
     parser.add_argument('--cpu', dest='cpu', help='(override GPU) use CPU to detect',
@@ -76,11 +77,11 @@ def parse_args():
                         help='non-maximum suppression threshold, default 0.5')
     parser.add_argument('--force', dest='force_nms', type=bool, default=True,
                         help='force non-maximum suppression on different class')
-    parser.add_argument('--timer', dest='show_timer', type=bool, default=True,
+    parser.add_argument('--timer', dest='show_timer', type=bool, default=False,
                         help='show detection time')
     parser.add_argument('--deploy', dest='deploy_net', action='store_true', default=False,
                         help='Load network from json file, rather than from symbol')
-    parser.add_argument('--realtime', dest='run_video', type=bool, default=False,
+    parser.add_argument('--realtime', dest='run_video', type=bool, default=True,
                         help='show detection for realtime video')
     args = parser.parse_args()
     return args
@@ -112,15 +113,22 @@ def main():
     #img = cv2.imread(img_file)
     #print(type(img))
     #print(img)
-
+    '''
+    import matplotlib.pyplot as plt
+    img = cv2.imread('./tmp/temp.jpg')
+    print(type(img))
+    plt.imshow(img)
+    plt.show()
+    '''
     cap = cv2.VideoCapture(0)
     while True:
         ret, frame = cap.read()
-        print(ret)
         print(type(frame))
+        cv2.rectangle(frame, (20, 20), (411, 411), (55, 255, 155), 5)
         cv2.imshow('Cam', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
     return
 
 if __name__ == '__main__':

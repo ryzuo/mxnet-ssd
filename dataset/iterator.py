@@ -169,7 +169,6 @@ class DetIter(mx.io.DataIter):
             self._size = imdb.num_images
         else:
             self._size = 1
-        print(self._size)
         self._index = np.arange(self._size)
 
         self._data = None
@@ -231,18 +230,14 @@ class DetIter(mx.io.DataIter):
             # index = self.debug_index
             if self._imdb is not None:
                 im_path = self._imdb.image_path_from_index(index)
-                print(im_path)
                 with open(im_path, 'rb') as fp:
                     img_content = fp.read()
-                    print(type(img_content))
                 img = mx.img.imdecode(img_content)
-                print(type(img))
                 gt = self._imdb.label_from_index(index).copy() if self.is_train else None
-                print(gt)
                 data, label = self._data_augmentation(img, gt)
             else:
-                img = mx.img.imdecode(self._frame)
-                print(type(img))
+                #img = mx.img.imdecode(self._frame)
+                img = mx.image.imdecode(self._frame)
                 gt = None
                 data, label = self._data_augmentation(img, gt)
             batch_data[i] = data

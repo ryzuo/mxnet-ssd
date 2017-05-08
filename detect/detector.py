@@ -33,12 +33,6 @@ class Detector(object):
             self.ctx = mx.cpu()
         self._run_video = run_video
         load_symbol, args, auxs = mx.model.load_checkpoint(model_prefix, epoch)
-        #print('load_symbol: ')
-        #print(load_symbol)
-        #print('symbol: ')
-        #print(symbol)
-        #print(args)
-        #print('auxs: ' + str(auxs))
         if symbol is None:
             symbol = load_symbol
         self.mod = mx.mod.Module(symbol, label_names=None, context=ctx)
@@ -47,6 +41,16 @@ class Detector(object):
         self.mod.set_params(args, auxs)
         self.data_shape = data_shape
         self.mean_pixels = mean_pixels
+        self.__colors = [
+            (255, 0, 0),
+            (255, 128, 0),
+            (255, 255, 0),
+            (0, 255, 0),
+            (0, 128, 255),
+            (0, 255, 255),
+            (0, 0, 255),
+            (255, 0, 255)
+        ]
 
     def detect(self, det_iter, show_timer=False):
         """
@@ -64,7 +68,6 @@ class Detector(object):
         list of detection results
         """
         num_images = det_iter._size
-        print(type(det_iter))
         if not isinstance(det_iter, mx.io.PrefetchingIter):
             det_iter = mx.io.PrefetchingIter(det_iter)
         start = timer()
@@ -127,10 +130,12 @@ class Detector(object):
         """
         import matplotlib.pyplot as plt
         import random
+        print(type(img))
         plt.imshow(img)
         height = img.shape[0]
         width = img.shape[1]
         colors = dict()
+        print(dets.shape[0])
         for i in range(dets.shape[0]):
             cls_id = int(dets[i, 0])
             if cls_id >= 0:
@@ -156,6 +161,30 @@ class Detector(object):
                                     fontsize=12, color='white')
         plt.show()
 
+    def visualize_vdetection(self, img, dets, classes=[], thresh=0.6):
+        import cv2
+        height = img.shape[0]
+        width = img.shape[1]
+        colors = dict()
+        for i in range(dets.shape[0]):
+            cls_id = int(dets[i, 0])
+            if cls_id >= 0:
+                score = dets[i, 1]
+                if score > thresh:
+                    if cls_id not in colors:
+                        colors[cls_id] = self.__colors[cls_id%len(self.__colors)]
+                    xmin = int(dets[i, 2] * width)
+                    ymin = int(dets[i, 3] * height)
+                    xmax = int(dets[i, 4] * width)
+                    ymax = int(dets[i, 5] * height)
+                    cv2.rectangle(img, (xmin, ymin), (xmax, ymax), colors[cls_id],3)
+                    class_name = str(cls_id)
+                    if classes and len(classes) > cls_id:
+                        class_name = classes[cls_id]
+                    text = '{:s} {:.3f}'.format(class_name, score)
+                    cv2.putText(img, text, (xmin, ymin-4), cv2.FONT_HERSHEY_TRIPLEX, 0.5, colors[cls_id], 1)
+        cv2.imshow('IMIO Surveillance', img)
+
     def detect_and_visualize(self, im_list, root_dir=None, extension=None,
                              classes=[], thresh=0.6, show_timer=False):
         """
@@ -180,11 +209,16 @@ class Detector(object):
             cap = cv2.VideoCapture(0)
             while True:
                 ret, frame = cap.read()
-                print(ret)
-                print(type(frame))
-                dets = self.vd_detect(frame=frame, show_timer=show_timer)
-                for det in dets:
-                    cv2.imshow('Cam', det)
+                img_file = './tmp/temp.jpg'
+                im_list = []
+                im_list.append(img_file)
+                cv2.imwrite(img_file, frame)
+                dets = self.im_detect(im_list, root_dir, extension, show_timer=show_timer)
+                if not isinstance(im_list, list):
+                    im_list = [im_list]
+                assert len(dets) == len(im_list)
+                for k, det in enumerate(dets):
+                    self.visualize_vdetection(frame, det, classes, thresh)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
         else:
@@ -193,7 +227,6 @@ class Detector(object):
                 im_list = [im_list]
             assert len(dets) == len(im_list)
             for k, det in enumerate(dets):
-                print(type(det))
                 img = cv2.imread(im_list[k])
                 img[:, :, (0, 1, 2)] = img[:, :, (2, 1, 0)]
                 self.visualize_detection(img, det, classes, thresh)
