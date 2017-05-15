@@ -124,7 +124,7 @@ def main():
     while True:
         ret, frame = cap.read()
         print(type(frame))
-        cv2.rectangle(frame, (20, 20), (411, 411), (55, 255, 155), 5)
+        #cv2.rectangle(frame, (20, 20), (411, 411), (55, 255, 155), 5)
         cv2.imshow('Cam', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

@@ -175,6 +175,9 @@ class DetIter(mx.io.DataIter):
         self._label = None
         self._get_batch()
 
+    def __del__(self):
+        print('I am self destroying')
+
     @property
     def provide_data(self):
         return [(k, v.shape) for k, v in self._data.items()]
